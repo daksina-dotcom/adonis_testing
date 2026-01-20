@@ -8,21 +8,11 @@ import { errors as bouncerErrors } from '@adonisjs/bouncer'
 console.log('This is in exceptions/handler.ts file')
 
 export default class HttpExceptionHandler extends ExceptionHandler {
-  /**
-   * In debug mode, we provide detailed stack traces.
-   * This is automatically disabled in production.
-   */
   protected debug = !app.inProduction
 
   async handle(error: any, ctx: HttpContext) {
-    /**
-     * 1. PARSE DEBUG INFORMATION
-     * We extract this first so it can be attached to any error type.
-     */
     const stackLines = error.stack?.split('\n') || []
     const callerLine = stackLines[1] || ''
-
-    // Regex to capture: [1] Function Name, [2] File Path, [3] Line, [4] Column
     const stackMatch = callerLine.match(/at\s+(.*)\s+\((.*):(\d+):(\d+)\)/) || 
                        callerLine.match(/at\s+()(.*):(\d+):(\d+)/)
 
@@ -39,13 +29,9 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         route_pattern: ctx.route?.pattern || 'Unknown',
         controller_action: ctx.route?.handler || 'Unknown'
       },
-      // The "Stack Tree" - showing the sequence of function calls
       stack_tree: stackLines.slice(0, 5).map((line: string) => line.trim())
     } : undefined
 
-    /**
-     * 2. HANDLE VALIDATION ERRORS (422)
-     */
     if (error instanceof vineErrors.E_VALIDATION_ERROR) {
       return ctx.response.status(error.status).send({
         status: error.status,
@@ -56,9 +42,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 3. HANDLE AUTHENTICATION ERRORS (401)
-     */
     if (error instanceof authErrors.E_UNAUTHORIZED_ACCESS) {
       return ctx.response.status(401).send({
         status: 401,
@@ -68,9 +51,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 4. HANDLE DATABASE RECORD NOT FOUND (404)
-     */
     if (error instanceof lucidErrors.E_ROW_NOT_FOUND) {
       return ctx.response.status(404).send({
         status: 404,
@@ -80,9 +60,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 5. HANDLE MISSING ROUTES (404)
-     */
     if (error.code === 'E_ROUTE_NOT_FOUND') {
       return ctx.response.status(404).send({
         status: 404,
@@ -92,9 +69,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 6. HANDLE BOUNCER AUTHORIZATION FAILURES (403)
-     */
     if (error instanceof bouncerErrors.E_AUTHORIZATION_FAILURE) {
       return ctx.response.status(error.status).send({
         status: error.status,
@@ -104,9 +78,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 7. GENERAL FORBIDDEN ERRORS (403)
-     */
     if (error.status === 403) {
       return ctx.response.status(403).send({
         status: 403,
@@ -116,9 +87,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       })
     }
 
-    /**
-     * 8. FALLBACK FOR INTERNAL SERVER ERRORS (500)
-     */
     const status = error.status || 500
     return ctx.response.status(status).send({
       status,

@@ -10,7 +10,7 @@
 
 import router from '@adonisjs/core/services/router'
 import server from '@adonisjs/core/services/server'
-
+console.log('THis is in start/kernel.ts file ')
 /**
  * The error handler is used to convert an exception
  * to an HTTP response.
@@ -36,6 +36,7 @@ router.use([
   () => import('@adonisjs/core/bodyparser_middleware'),
   () => import('@adonisjs/auth/initialize_auth_middleware'),
   () => import('@adonisjs/session/session_middleware'),
+  () => import('#middleware/initialize_bouncer_middleware'),
 ])
 
 /**
@@ -43,7 +44,9 @@ router.use([
  * the routes or the routes group.
  */
 export const middleware = router.named({
+  jwtAuth: () => import('#middleware/jwt_auth_middleware'),
   guest: () => import('#middleware/guest_middleware'),
   auth: () => import('#middleware/auth_middleware'),
   manualAuth: () => import('#middleware/manual_auth_middleware'),
+  bouncer: () => import('#middleware/initialize_bouncer_middleware'),
 })

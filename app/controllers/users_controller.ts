@@ -1,54 +1,128 @@
 import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
-import { putUserValidator, patchUserValidator } from '#validators/user'
-import { createUserValidator } from '#validators/user'
-import { showUserValidator } from '#validators/user'
-
+import {
+  createUserValidator,
+  showUserValidator,
+  idParamValidator,
+  putUserValidator,
+  patchUserValidator,
+  bulkCreateValidator,
+  bulkUpdateValidator,
+  bulkDeleteValidator,
+  userQueryValidator,
+} from '#validators/user'
+import UserPolicy from '#policies/user_policy'
+import db from '@adonisjs/lucid/services/db'
+console.log('THis is in controllers/users_controller.ts file ')
 export default class UsersController {
-  async index({}: HttpContext) {
-    const users = await User.all()
-    return users
-  }
 
-  async store({ request, response }: HttpContext) {
+async getAllUsers({ request }: HttpContext) {
+  const { search, isAdmin, sortBy, order } = await request.validateUsing(userQueryValidator)
+
+  const query = User.query()
+  if (search) {
+    query.where((q) => {
+      q.where('name', 'like', `%${search}%`)
+       .orWhere('email', 'like', `%${search}%`)
+    })
+  }
+  if (isAdmin !== undefined) {
+    query.where('isAdmin', isAdmin)
+  }
+  const sortColumn = sortBy || 'createdAt'
+  const sortOrder = order || 'desc'
+  query.orderBy(sortColumn, sortOrder)
+  return await query.paginate(request.input('page', 1), 10)
+}
+
+  async createUser({ request }: HttpContext) {
     const payload = await request.validateUsing(createUserValidator)
     const user = await User.create(payload)
-    return response.created({
+    return {
+      status: true,
       message: 'User Created Successfully',
       receivedData: user,
+    }
+  }
+
+  async bulkCreate({ request }: HttpContext) {
+    const payload = await request.validateUsing(bulkCreateValidator)
+    return await db.transaction(async (trx) => {
+      const users = await User.createMany(payload.users, { client: trx })
+      return {
+        status: true,
+        message: `${users.length} Users Created Successfully`,
+        receivedData: users,
+      }
     })
   }
 
-  async show({ params }: HttpContext) {
-    
-    const payload = await showUserValidator.validate({params});
+  async getUser({ params }: HttpContext) {
+    const payload = await showUserValidator.validate({ params })
     const user = await User.findOrFail(payload.params.id)
+    // const user = await User.findByOrFail('id',payload.params.id)
     return user
   }
 
-  async update({ params, request, response }: HttpContext) {
-    const user = await User.findOrFail(params.id)
+  async updateUser({ params, request, bouncer }: HttpContext) {
+    console.log('This is in update function at controllers/users_controller.ts file')
     const validator = request.method() === 'PUT' ? putUserValidator : patchUserValidator
+    const payload = await request.validateUsing(validator, { data: { ...request.all(), params } })
+    const targetUser = await User.findOrFail(params.id)
+    await bouncer.with(UserPolicy).authorize('update', targetUser, payload)
+    targetUser.merge(payload)
+    await targetUser.save()
 
-    const payload = await request.validateUsing(validator as any)
-
-    user.merge(payload)
-    await user.save()
-
-    return response.ok({
+    return {
+      status: true,
       message: `User with Id ${params.id} has been updated successfully.`,
-      userId: params.id,
-      receivedData: user,
+      receivedData: targetUser,
+    }
+  }
+
+  // app/controllers/users_controller.ts
+
+  async bulkUpdate({ request, bouncer }: HttpContext) {
+    const payload = await request.validateUsing(bulkUpdateValidator)
+    await bouncer.with(UserPolicy).authorize('manage')
+    return await db.transaction(async (trx) => {
+      const users = await User.updateOrCreateMany('id', payload.users, {
+        client: trx,
+      })
+
+      return {
+        status: true,
+        message: `${users.length} users processed successfully.`,
+        receivedData: users,
+      }
     })
   }
 
-  async destroy({ params, response }: HttpContext) {
+  async deleteUser({ request, params, bouncer }: HttpContext) {
+    await request.validateUsing(idParamValidator, { data: { params } })
     const user = await User.findOrFail(params.id)
-
+    await bouncer.with(UserPolicy).authorize('delete', user)
     await user.delete()
-
-    return response.ok({
+    return {
+      status: true,
       message: `User with Id ${params.id} has been deleted successfully.`,
-    })
+    }
+  }
+
+  async bulkDelete({ request, response, bouncer }: HttpContext) {
+    const payload = await request.validateUsing(bulkDeleteValidator)
+    await bouncer.with('UserPolicy').authorize('delete')
+    const affectedRows = (await User.query()
+      .whereIn('id', payload.ids)
+      .delete()) as unknown as number
+
+    if (affectedRows === 0) {
+      return response.notFound({ message: 'No users found with the provided IDs' })
+    }
+
+    return {
+      status: true,
+      message: `Successfully deleted ${affectedRows} users.`,
+    }
   }
 }

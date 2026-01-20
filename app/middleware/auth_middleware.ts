@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type { Authenticators } from '@adonisjs/auth/types'
-
+console.log('THis is in middleware/auth_middleware.ts file ')
 /**
  * Auth middleware is used authenticate HTTP requests and deny
  * access to unauthenticated users.

@@ -1,0 +1,30 @@
+THis is in bin/console.ts file 
+THis is in adonisrc.ts file 
+c[ info ] starting HTTP server...
+THis is in bin/server.ts file 
+THis is in adonisrc.ts file 
+THis is in start/env.ts file 
+THis is in start/kernel.ts file 
+THis is in start/routes.ts file 
+THis is in exceptions/handler.ts file 
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│    Server address: http://localhost:3333        │
+│    Watch Mode: HMR                              │
+│    Ready in: 333 ms                             │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+[06:12:34.750] INFO (5492): started HTTP server on localhost:3333
+THis is in middleware/initialize_bouncer_middleware.ts file 
+Bouncer User: undefined isAdmin: undefined
+THis is in validators/user.ts file 
+THis is in utils/jwt_utils.ts file 
+THis is in models/user.ts file 
+THis is in controllers/auth_controller.ts file 
+Bouncer User: undefined isAdmin: undefined
+THis is in services/jwt_service.ts file 
+THis is in middleware/jwt_auth_middleware.ts file 
+THis is in controllers/users_controller.ts file 
+Bouncer User: undefined isAdmin: undefined
+Bouncer User: undefined isAdmin: undefined
+

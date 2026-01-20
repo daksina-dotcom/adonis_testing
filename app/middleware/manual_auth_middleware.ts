@@ -18,7 +18,9 @@ export default class ManualAuthMiddleware {
 
     // 3. Validation check
     if (!token || !token.startsWith('Bearer ')) {
-      return ctx.response.unauthorized({ message: 'Manual Auth: No token provided in Header or URL' })
+      return {
+        message: 'Manual Auth: No token provided in Header or URL',
+      }
     }
 
     return next()

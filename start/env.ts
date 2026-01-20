@@ -10,7 +10,7 @@
 */
 
 import { Env } from '@adonisjs/core/env'
-
+console.log('THis is in start/env.ts file ')
 export default await Env.create(new URL('../', import.meta.url), {
   NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),
   PORT: Env.schema.number(),

@@ -1,69 +1,87 @@
 import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
-import db from '@adonisjs/lucid/services/db'
-import { AccessToken } from '@adonisjs/auth/access_tokens'
 import { loginValidator } from '#validators/user'
-
+import JwtUtils from '#utils/jwt_utils'
+console.log('THis is in controllers/auth_controller.ts file ')
 export default class AuthController {
-async login({ request, response }: HttpContext) {
-  const data = {
-    ...request.all(),      // Gets Body + Query String (?email=)
-    ...request.params(),   // Gets Route Params (:email)
-  }
-  const { email, password } = await request.validateUsing(loginValidator,{data})
-
-  const user = await User.findBy('email', email)
-  if (!user) return response.unauthorized({ message: 'User not found' })
-
-  const isPasswordValid = await hash.verify(user.password, password)
-  if (!isPasswordValid) return response.unauthorized({ message: 'Password match failed' })
-
-  const token = await User.accessTokens.create(user)
-
-  return response.ok({
-    message: 'Login successful',
-    token: token.value!.release(),
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    }
-  })
-}
-async logout({ request, response }: HttpContext) {
-  const authHeader = request.header('Authorization')
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return response.badRequest({ message: 'No token provided' })
-  }
-
-  const tokenValue = authHeader.replace('Bearer ', '').trim()
-
-  try {
-    const decodedToken = AccessToken.decode('oat_', tokenValue)
-    
-    if (!decodedToken) {
-      return response.unauthorized({ message: 'Invalid token format' })
+  async login({ request }: HttpContext) {
+    const data = {
+      ...request.all(),
+      ...request.params(),
     }
 
-const deletedRows = (await db
-  .from('auth_access_tokens')
-  .where('id', decodedToken.identifier)
-  .delete()) as unknown as number
+    const { email, password } = await request.validateUsing(loginValidator, { data })
 
-if (deletedRows === 0) {
-  return response.notFound({ message: 'Token not found or already deleted' })
-}
+    const user = await User.findBy('email', email)
+    if (!user) {
+      return { message: 'Invalid credentials' }
+    }
 
-    return response.ok({
-      message: 'Logged out successfully. Token removed from database.'
-    })
-  } catch (error) {
-    return response.internalServerError({ 
-      message: 'Logout failed', 
-      error: error.message 
-    })
+    const isPasswordValid = await hash.verify(user.password, password)
+    if (!isPasswordValid) {
+      return { message: 'Invalid credentials' }
+    }
+
+    // --- CUSTOM JWT LOGIC START ---
+    const payload = { userId: user.id, email: user.email }
+
+    const accessToken = JwtUtils.generateAccessToken(payload)
+    const refreshToken = JwtUtils.generateRefreshToken(payload)
+    // --- CUSTOM JWT LOGIC END ---
+
+    return {
+      message: 'Login successful',
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      tokenType: 'Bearer',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    }
   }
-}
+
+  async refresh({ request }: HttpContext) {
+    const refreshToken = request.input('refresh_token')
+
+    if (!refreshToken) {
+      return { message: 'Refresh token is required' }
+    }
+
+    try {
+      // 1. Verify the refresh token
+      const payload = JwtUtils.verifyRefreshToken(refreshToken)
+
+      // 2. (Optional but recommended) Check if user still exists in DB
+      const user = await User.find(payload.userId)
+      if (!user) {
+        return { message: 'User no longer exists' }
+      }
+
+      // 3. Generate new tokens
+      const newPayload = { userId: user.id, email: user.email }
+      const accessToken = JwtUtils.generateAccessToken(newPayload)
+      const newRefreshToken = JwtUtils.generateRefreshToken(newPayload)
+
+      return {
+        message: 'Token refreshed successfully',
+        accessToken: accessToken,
+        refreshToken: newRefreshToken,
+      }
+    } catch (error) {
+      return { message: 'Invalid or expired refresh token' }
+    }
+  }
+
+  async logout({ auth_user }: HttpContext) {
+    if (!auth_user) {
+      return { message: 'Not authenticated' }
+    }
+    console.log(auth_user)
+    return {
+      message: 'Logged out successfully (Please clear your local tokens)',
+    }
+  }
 }

@@ -15,7 +15,7 @@ process.env.NODE_ENV = 'test'
 import 'reflect-metadata'
 import { Ignitor, prettyPrintError } from '@adonisjs/core'
 import { configure, processCLIArgs, run } from '@japa/runner'
-
+console.log('THis is in bin/test.ts file ')
 /**
  * URL to the application root. AdonisJS need it to resolve
  * paths to file and directories for scaffolding commands

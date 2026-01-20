@@ -13,10 +13,20 @@ import {
 } from '#validators/user'
 import UserPolicy from '#policies/user_policy'
 import db from '@adonisjs/lucid/services/db'
+interface ApiResponse<T = any> {
+  status: boolean
+  message: string
+  receivedData?: T
+}
+
+interface PaginatedResponse<T> {
+  meta: any
+  data: T[]
+}
 console.log('THis is in controllers/users_controller.ts file ')
 export default class UsersController {
 
-async getAllUsers({ request }: HttpContext) {
+async getAllUsers({ request }: HttpContext): Promise<PaginatedResponse<User>> {
   const { search, isAdmin, sortBy, order } = await request.validateUsing(userQueryValidator)
 
   const query = User.query()
@@ -32,10 +42,11 @@ async getAllUsers({ request }: HttpContext) {
   const sortColumn = sortBy || 'createdAt'
   const sortOrder = order || 'desc'
   query.orderBy(sortColumn, sortOrder)
-  return await query.paginate(request.input('page', 1), 10)
+  const result = await query.paginate(request.input('page', 1), 10)
+  return result.toJSON() as PaginatedResponse<User>
 }
 
-  async createUser({ request }: HttpContext) {
+  async createUser({ request }: HttpContext): Promise<ApiResponse<User>> {
     const payload = await request.validateUsing(createUserValidator)
     const user = await User.create(payload)
     return {
@@ -45,7 +56,7 @@ async getAllUsers({ request }: HttpContext) {
     }
   }
 
-  async bulkCreate({ request }: HttpContext) {
+  async bulkCreate({ request }: HttpContext): Promise<ApiResponse<User[]>> {
     const payload = await request.validateUsing(bulkCreateValidator)
     return await db.transaction(async (trx) => {
       const users = await User.createMany(payload.users, { client: trx })
@@ -57,14 +68,14 @@ async getAllUsers({ request }: HttpContext) {
     })
   }
 
-  async getUser({ params }: HttpContext) {
+  async getUser({ params }: HttpContext): Promise<User> {
     const payload = await showUserValidator.validate({ params })
     const user = await User.findOrFail(payload.params.id)
     // const user = await User.findByOrFail('id',payload.params.id)
     return user
   }
 
-  async updateUser({ params, request, bouncer }: HttpContext) {
+  async updateUser({ params, request, bouncer }: HttpContext):Promise<ApiResponse<User>> {
     console.log('This is in update function at controllers/users_controller.ts file')
     const validator = request.method() === 'PUT' ? putUserValidator : patchUserValidator
     const payload = await request.validateUsing(validator, { data: { ...request.all(), params } })
@@ -80,9 +91,7 @@ async getAllUsers({ request }: HttpContext) {
     }
   }
 
-  // app/controllers/users_controller.ts
-
-  async bulkUpdate({ request, bouncer }: HttpContext) {
+  async bulkUpdate({ request, bouncer }: HttpContext): Promise<ApiResponse<User[]>> {
     const payload = await request.validateUsing(bulkUpdateValidator)
     await bouncer.with(UserPolicy).authorize('manage')
     return await db.transaction(async (trx) => {
@@ -98,7 +107,7 @@ async getAllUsers({ request }: HttpContext) {
     })
   }
 
-  async deleteUser({ request, params, bouncer }: HttpContext) {
+  async deleteUser({ request, params, bouncer }: HttpContext): Promise<ApiResponse> {
     await request.validateUsing(idParamValidator, { data: { params } })
     const user = await User.findOrFail(params.id)
     await bouncer.with(UserPolicy).authorize('delete', user)
@@ -109,7 +118,7 @@ async getAllUsers({ request }: HttpContext) {
     }
   }
 
-  async bulkDelete({ request, response, bouncer }: HttpContext) {
+  async bulkDelete({ request, response, bouncer }: HttpContext): Promise<ApiResponse | void> {
     const payload = await request.validateUsing(bulkDeleteValidator)
     await bouncer.with('UserPolicy').authorize('delete')
     const affectedRows = (await User.query()

@@ -10,9 +10,15 @@ const uniqueEmailRule = async (db: any, value: string, field: any) => {
   const user = await query.first()
   return !user
 }
-const nameSchema = vine.string().trim().minLength(3)
+const nameSchema = vine.string().trim().minLength(2)
 const emailSchema = vine.string().trim().email().unique(uniqueEmailRule)
 const passwordSchema = vine.string().trim().minLength(8)
+const firstnameSchema = vine.string().trim().minLength(2)
+const lastnameSchema = vine.string().trim().minLength(2)
+const ageSchema = vine.number().min(0).max(120)
+const phoneSchema = vine.string().trim().fixedLength(10)
+const genderSchema = vine.string().trim().optional()
+const occupationSchema = vine.string().trim().optional()
 
 export const loginValidator = vine.compile(
   vine.object({
@@ -29,7 +35,6 @@ export const idParamValidator = vine.compile(
 
 export const createUserValidator = vine.compile(
   vine.object({
-    name: nameSchema,
     email: emailSchema,
     password: passwordSchema,
   })
@@ -80,19 +85,39 @@ export const showUserValidator = vine.compile(
   })
 )
 
-export const patchUserValidator = vine.compile(
-  vine.object({
-    name: nameSchema.optional(),
-    email: emailSchema.optional(),
-    password: passwordSchema.optional(),
-  })
-)
-
 export const putUserValidator = vine.compile(
   vine.object({
+    firstname: firstnameSchema,
+    lastname: lastnameSchema,
+    age: ageSchema,
+    phone: phoneSchema,
+    gender: genderSchema,
+    occupation: occupationSchema,
+    isAdmin: vine.boolean().optional(),
     name: nameSchema.optional(),
     email: emailSchema,
     password: passwordSchema,
+    // params: vine.object({
+    //   id: vine.number()
+    // }).optional()
+  })
+)
+
+// Do the same for patchUserValidator but make fields .optional()
+export const patchUserValidator = vine.compile(
+  vine.object({
+    firstname: firstnameSchema.optional(),
+    lastname: lastnameSchema.optional(),
+    age: ageSchema.optional(),
+    phone: phoneSchema.optional(),
+    gender: genderSchema.optional(),
+    occupation: occupationSchema.optional(),
+    name: nameSchema.optional(),
+    email: emailSchema.optional(),
+    password: passwordSchema.optional(),
+    // params: vine.object({
+    //   id: vine.number()
+    // }).optional()
   })
 )
 

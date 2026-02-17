@@ -46,7 +46,7 @@ router
   .prefix('/users')
   .as('users')
 
-  .use([middleware.jwtAuth()])
+  .use([middleware.jwtAuth(),middleware.bouncer()])
 
 router
   .post('/admin/promote/:id', [AdminController, 'promote'])

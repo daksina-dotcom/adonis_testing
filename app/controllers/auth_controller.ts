@@ -5,7 +5,7 @@ import { loginValidator } from '#validators/user'
 import JwtUtils from '#utils/jwt_utils'
 console.log('THis is in controllers/auth_controller.ts file ')
 export default class AuthController {
-  async login({ request }: HttpContext) {
+  async login({ request ,response}: HttpContext) {
     const data = {
       ...request.all(),
       ...request.params(),
@@ -23,18 +23,26 @@ export default class AuthController {
       return { message: 'Invalid credentials' }
     }
 
-    // --- CUSTOM JWT LOGIC START ---
     const payload = { userId: user.id, email: user.email }
 
     const accessToken = JwtUtils.generateAccessToken(payload)
     const refreshToken = JwtUtils.generateRefreshToken(payload)
-    // --- CUSTOM JWT LOGIC END ---
+
+response.append(
+    'Set-Cookie', 
+    `auth_token=${accessToken}; Path=/; Max-Age=7200; SameSite=Lax`
+  )
+
+    response.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: '1hr',
+      path: '/refresh',
+    })
 
     return {
       message: 'Login successful',
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      tokenType: 'Bearer',
       user: {
         id: user.id,
         email: user.email,
@@ -75,13 +83,10 @@ export default class AuthController {
     }
   }
 
-  async logout({ auth_user }: HttpContext) {
-    if (!auth_user) {
-      return { message: 'Not authenticated' }
-    }
-    console.log(auth_user)
+  async logout({ response }: HttpContext) {
+    response.clearCookie('auth_token')
     return {
-      message: 'Logged out successfully (Please clear your local tokens)',
+      message: 'Logged out successfully',
     }
   }
 }

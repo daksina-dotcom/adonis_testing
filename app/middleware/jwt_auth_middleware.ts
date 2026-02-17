@@ -7,22 +7,47 @@ console.log('THis is in middleware/jwt_auth_middleware.ts file ')
 export default class JwtAuthMiddleware {
   constructor(protected jwtService: JwtService) {}
 
-  async handle(ctx: HttpContext, next: NextFn) {
-    const authHeader = ctx.request.header('authorization')
+// middleware/jwt_auth_middleware.ts
+async handle(ctx: HttpContext, next: NextFn) {
+  // Check the raw headers and cookies first
+  console.log('--- JWT Middleware Check ---')
+  console.log('Authorization Header:', ctx.request.header('authorization'))
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { message: 'Missing or invalid token' }
-    }
+  let token = ctx.request.header('authorization')?.split(' ')[1]
 
-    const token = authHeader.split(' ')[1]
-
-    try {
-      const user = await this.jwtService.authenticateRequest(token)
-      // Attach the user to the context so controllers can access it via ctx.auth_user
-      ctx.auth_user = user
-      return next()
-    } catch (error) {
-      return { message: error.message }
-    }
+  if (!token) {
+    token = ctx.request.cookie('auth_token')
+    console.log('Token found in cookie:', token ? 'Yes' : 'No')
+  } else {
+    console.log('Token found in header: Yes')
   }
+
+  if (!token) {
+    console.error('Final Result: No token identified')
+    return ctx.response.unauthorized({ message: 'No token found' })
+  }
+
+// middleware/jwt_auth_middleware.ts
+try {
+  const user = await this.jwtService.authenticateRequest(token)
+  
+  if (!user) {
+    throw new Error('User not found after decryption')
+  }
+
+  ctx.auth_user = user
+
+  
+  return next()
+} catch (error) {
+  console.error('CRITICAL MIDDLEWARE ERROR:', error) // This prints to your VS Code / Terminal
+  
+  return ctx.response.unauthorized({ 
+    message: 'Invalid token', 
+    // Fallback to a string if error.name is missing
+    code: error.name || 'UNKNOWN_ERROR',
+    detail: error.message 
+  })
+}
+}
 }

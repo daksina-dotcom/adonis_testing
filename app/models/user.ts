@@ -13,8 +13,26 @@ export default class User extends BaseModel {
   @column()
   declare email: string
 
-  @column({ serializeAs: null }) // Still hide this in JSON
+  @column({ serializeAs: null }) 
   declare password: string
+
+  @column()
+  declare firstname: string | null
+
+  @column()
+  declare lastname: string | null
+
+  @column()
+  declare age: number | null
+
+  @column()
+  declare phone: string | null
+
+  @column()
+  declare gender: string | null
+
+  @column()
+  declare occupation: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

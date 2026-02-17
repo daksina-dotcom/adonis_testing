@@ -8,6 +8,7 @@ export default class extends BaseSchema {
       // Add the boolean column. Default to false so
       // existing users don't accidentally become admins.
       table.boolean('is_admin').defaultTo(false).after('password')
+      
     })
   }
 

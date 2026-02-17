@@ -44,9 +44,9 @@ router.use([
  * the routes or the routes group.
  */
 export const middleware = router.named({
+  auth: () => import('#middleware/auth_middleware'),
   jwtAuth: () => import('#middleware/jwt_auth_middleware'),
   guest: () => import('#middleware/guest_middleware'),
-  auth: () => import('#middleware/auth_middleware'),
   manualAuth: () => import('#middleware/manual_auth_middleware'),
   bouncer: () => import('#middleware/initialize_bouncer_middleware'),
 })

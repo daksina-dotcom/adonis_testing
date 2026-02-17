@@ -48,6 +48,7 @@ async getAllUsers({ request }: HttpContext): Promise<PaginatedResponse<User>> {
 
   async createUser({ request }: HttpContext): Promise<ApiResponse<User>> {
     const payload = await request.validateUsing(createUserValidator)
+    console.log(payload)
     const user = await User.create(payload)
     return {
       status: true,
@@ -75,12 +76,16 @@ async getAllUsers({ request }: HttpContext): Promise<PaginatedResponse<User>> {
     return user
   }
 
-  async updateUser({ params, request, bouncer }: HttpContext):Promise<ApiResponse<User>> {
+  async updateUser({ params, request, response,bouncer,auth_user }: HttpContext):Promise<ApiResponse<User>> {
     console.log('This is in update function at controllers/users_controller.ts file')
     const validator = request.method() === 'PUT' ? putUserValidator : patchUserValidator
     const payload = await request.validateUsing(validator, { data: { ...request.all(), params } })
     const targetUser = await User.findOrFail(params.id)
-    await bouncer.with(UserPolicy).authorize('update', targetUser, payload)
+
+    if (auth_user.id !== targetUser.id && !auth_user.isAdmin) {
+      response.forbidden({ message: 'You cannot edit this profile' })
+    }
+    //await bouncer.with(UserPolicy).authorize('update', targetUser, payload)
     targetUser.merge(payload)
     await targetUser.save()
 
